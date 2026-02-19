@@ -219,7 +219,7 @@ cat > "$APP_DIR/.vscode/launch.json" <<EOF
 {
     "version": "0.2.0",
     "configurations": [
-        {   "name": "Pico Debug",
+        {   "name": "Pico Debug (RP2040)",
             "device": "RP2040",
             "gdbPath": "arm-none-eabi-gdb",
             "cwd": "\${workspaceRoot}",
@@ -229,10 +229,30 @@ cat > "$APP_DIR/.vscode/launch.json" <<EOF
             "type": "cortex-debug",
             "servertype": "openocd",
             "configFiles": [
-                "interface/picoprobe.cfg",
+                "interface/cmsis-dap.cfg",
                 "target/rp2040.cfg"
             ],
-            "svdFile": "\${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
+            "svdFile": "\${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/RP2040.svd",
+            "runToEntryPoint": "main",
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ]
+        },
+        {   "name": "Pico 2 Debug (RP2350)",
+            "device": "RP2350",
+            "gdbPath": "arm-none-eabi-gdb",
+            "cwd": "\${workspaceRoot}",
+            "executable": "\${workspaceFolder}/build/$APP_NAME.elf",
+            "preLaunchTask": "CMake Build",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/rp2350.cfg"
+            ],
+            "svdFile": "\${env:PICO_SDK_PATH}/src/rp2350/hardware_regs/RP2350.svd",
             "runToEntryPoint": "main",
             "postRestartCommands": [
                 "break main",
