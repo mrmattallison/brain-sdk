@@ -3,13 +3,15 @@
 ## Basic folder structure
 ```
 brain-sdk/
-├── build/         # CMake build output
-├── cmake/         # CMake helper scripts
+├── build/         # Default CMake build output
+├── build-rp2040/  # Optional RP2040 build output
+├── build-rp2350/  # Optional RP2350 build output
 ├── docs/          # Documentation and conventions
 ├── lib/           # Reusable libraries (e.g. brain-io, brain-ui)
 ├── pico-sdk/      # Pico SDK (as a git submodule)
-├── programs/      # Firmware applications
-├── scripts/       # Helper scripts (e.g. new-program.sh)
+├── scripts/       # Helper scripts (e.g. new-brain-app.sh)
+├── test/          # Manual hardware test apps
+└── sandbox/       # Thin sandbox firmware wrapper
 ```
 
 ## Prerequisites
@@ -63,9 +65,11 @@ This ensures that both VSCode and clang-format use tabs (width 4) for indentatio
 ## Creating a new program
 Use the helper script:
 ```sh
-./scripts/new-program.sh <program-name>
+./scripts/new-brain-app.sh <program-name>
 ```
-This will create a new folder a folder up from the brain-sdk (`../`) with boilerplate files. After running, re-run CMake configure/build:
+This creates a new app folder (by default one level above `brain-sdk`) with boilerplate files and `brain-sdk` as a submodule.
+
+After running, re-run CMake configure/build:
 ```sh
 rm -rf build
 cmake -B build -G "Unix Makefiles"
@@ -91,8 +95,12 @@ brew install clang-format
 The `.clang-format` file in the project root configures formatting rules.
 
 ## Debugging a program
-Edit `.vscode/launch.json` and set the `executable` parameter to the desired program's `.elf` file, e.g.:
-```jsonc
-"executable": "${workspaceFolder}/build/programs/blinky/blinky.elf"
-```
-Select the debug configuration in VSCode and hit F5 to start debugging with Picoprobe.
+Use the predefined VSCode launch profiles in `.vscode/launch.json`:
+- `Test - RP2040`
+- `Test - RP2350`
+- `Sandbox - RP2040`
+- `Sandbox - RP2350`
+
+Each profile has a matching pre-launch task in `.vscode/tasks.json` that configures and builds the correct board/target combo in either `build-rp2040/` or `build-rp2350/`.
+
+Select the desired debug configuration in VSCode and hit F5 to start debugging with Picoprobe.

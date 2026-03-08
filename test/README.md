@@ -9,14 +9,14 @@ Purpose: reusable manual hardware test apps for Brain SDK components.
 
 ## Switching Active App
 
-The firmware entrypoint is in `sandbox/main.cpp`.
+The test firmware entrypoint is in `test/main.cpp`.
 
 To switch tests:
-1. Update the include in `sandbox/main.cpp` to the desired app header from `test/apps/`.
+1. Update the include in `test/main.cpp` to the desired app header from `test/apps/`.
 2. Update the instantiated class in `main()`.
 3. Rebuild with:
 ```bash
-cmake --build build -j4
+cmake --build build --target test -j4
 ```
 
 ## Development

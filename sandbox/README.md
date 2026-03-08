@@ -11,10 +11,10 @@ Hardware test app implementations live in `test/apps/`.
 ## Switching active app
 
 Edit `sandbox/main.cpp`:
-- change the include from `#include "apps/blink.h"` to the target app header
+- change the include from `#include "apps/blink.h"` to another header in `sandbox/apps/`
 - change the instantiated class in `main()`
 
 Then rebuild:
 ```bash
-cmake --build build -j4
+cmake --build build --target sandbox -j4
 ```

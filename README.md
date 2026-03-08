@@ -13,7 +13,7 @@ Brain uses a Raspberry Pi Pico or Pico 2 (depending on what the builder chose to
 Additionally there are some controls on the UI:
 - 3 potmeters, multiplexed, using the third ADC of the Pico
 - 2 pushbuttons
-- 6 LEDs. The power for the LEDs are taken from the external power supply (using transistors) because of the Pico's limited power capabilities. The LEDs brightness can be set with PWM output from the Pico
+- 6 LEDs. The power for the LEDs are taken from the external power supply (using transistors) because of the Pico's limited power capabilities. LED control supports both PWM brightness and simple GPIO on/off mode.
 
 As the Pico and Pico2 are pin compatible, the newer version can be used for heavier programs like effects or DSP.
 
@@ -31,7 +31,7 @@ Anyone can write their own apps for the Brain module. The SDK provides easy acce
 
 #### UI Components (`brain::ui`)
 - [Button](docs/BUTTON.md) - Debounced pushbutton input with callbacks
-- [LED](docs/LED.md) - Individual LED control with PWM brightness
+- [LED](docs/LED.md) - Individual LED control with runtime-selectable SIMPLE/PWM mode
 - [Leds](docs/LEDS.md) - Group LED controller for all 6 Brain module LEDs
 - [Pots](docs/POTS.md) - Multiplexed potentiometer reader
 
@@ -43,8 +43,9 @@ Anyone can write their own apps for the Brain module. The SDK provides easy acce
 ### Folder Structure
 ```
 brain-sdk/
-├── build/         # CMake build output
-├── cmake/         # CMake helper scripts
+├── build/         # CMake build output (default)
+├── build-rp2040/  # Optional board-specific build output
+├── build-rp2350/  # Optional board-specific build output
 ├── docs/          # Documentation and conventions
 ├── lib/           # Reusable libraries
 │   ├── brain-common/    # Common definitions and GPIO setup
@@ -52,10 +53,9 @@ brain-sdk/
 │   ├── brain-ui/        # UI components (Button, LED, Leds, Pots)
 │   └── brain-utils/     # Utilities (MIDI to CV, RingBuffer, helpers)
 ├── pico-sdk/      # Pico SDK (as a git submodule)
-├── programs/      # Firmware applications
-├── scripts/       # Helper scripts (e.g. new-program.sh)
+├── scripts/       # Helper scripts (e.g. new-brain-app.sh)
 ├── test/          # Manual hardware test apps and docs
-└── sandbox/       # Thin firmware wrapper selecting a test app
+└── sandbox/       # Thin firmware wrapper for quick experiments
 ```
 
 ## Development

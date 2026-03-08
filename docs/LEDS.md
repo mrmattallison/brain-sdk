@@ -5,6 +5,7 @@ The Leds component provides a high-level interface for managing all 6 LEDs in th
 
 ## Features
 - Manages all 6 Brain module LEDs as a group
+- Runtime-selectable output mode (`LedMode::kSimple` / `LedMode::kPwm`)
 - Individual LED control (on/off/toggle/brightness)
 - Multi-LED operations (all on/off, set from bitmask)
 - Blinking support with duration and interval control
@@ -15,7 +16,7 @@ The Leds component provides a high-level interface for managing all 6 LEDs in th
 ## Usage
 
 ### Basic Setup
-1. **Initialization**: Create a `Leds` instance and call `init()`
+1. **Initialization**: Create a `Leds` instance and call `init()` (or `init(mode)`)
 2. **Update Loop**: Call `update()` regularly in your main loop to handle blinking
 3. **Control**: Use methods to control individual or multiple LEDs
 
@@ -24,7 +25,7 @@ The Leds component provides a high-level interface for managing all 6 LEDs in th
 #include "brain-ui/leds.h"
 
 brain::ui::Leds leds;
-leds.init();
+leds.init(brain::ui::LedMode::kPwm);
 
 // Turn on individual LEDs
 leds.on(0);
@@ -42,6 +43,18 @@ leds.off_all();
 while (true) {
     leds.update();  // Required for blinking functionality
 }
+```
+
+### Example - Mode Selection
+```cpp
+#include "brain-ui/leds.h"
+
+brain::ui::Leds leds(brain::ui::LedMode::kSimple);
+leds.init();
+leds.on_all();  // direct GPIO on/off
+
+leds.set_mode(brain::ui::LedMode::kPwm);  // switch at runtime
+leds.set_brightness(0, 64);
 ```
 
 ### Example - Blinking
@@ -107,7 +120,12 @@ while (true) {
 ## API Reference
 
 ### Initialization
-- `void init()` - Initialize all 6 LEDs
+- `Leds(LedMode mode)` - Construct with explicit mode
+- `Leds(bool simple_mode = false)` - Backward-compatible constructor
+- `void init()` - Initialize all 6 LEDs using current mode
+- `void init(LedMode mode)` - Initialize all LEDs with explicit mode
+- `void set_mode(LedMode mode)` - Change mode of all LEDs at runtime
+- `LedMode get_mode() const` - Get current mode
 - `void update()` - Update LED states (call in main loop)
 
 ### Single LED Methods
@@ -134,7 +152,8 @@ while (true) {
 ## Notes
 - LED indices are 0-5 (corresponding to the 6 LEDs on Brain module)
 - LEDs are transistor-driven for Eurorack compatibility
-- Brightness control uses PWM
+- In `kSimple` mode, brightness behaves like on/off (`>0` means ON)
+- In `kPwm` mode, brightness control uses PWM
 - `update()` must be called regularly for blinking to work
 - The bitmask in `set_from_mask()` uses bits 0-5 (LSB to MSB)
 - Invalid LED indices are validated internally and ignored

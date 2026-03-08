@@ -79,23 +79,16 @@ mkdir -p "$APP_DIR/.vscode"
 cat > "$APP_DIR/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.22)
 
-# ============================================================================
-# BOARD CONFIGURATION - Comment/uncomment to switch between boards
-# ============================================================================
+# Default board/platform. Can be overridden at configure time with:
+#   -DPICO_BOARD=<board>
+#   -DPICO_PLATFORM=<platform>
+if(NOT DEFINED PICO_BOARD)
+	set(PICO_BOARD pico2)
+endif()
 
-# Raspberry Pi Pico (RP2040 - ARM Cortex-M0+) - ACTIVE
-set(PICO_BOARD pico)
-set(PICO_PLATFORM rp2040)
-
-# Raspberry Pi Pico 2 (RP2350 - ARM Cortex-M33)
-# set(PICO_BOARD pico2)
-# set(PICO_PLATFORM rp2350-arm-s)
-
-# Alternative: Raspberry Pi Pico 2 with RISC-V cores
-# set(PICO_BOARD pico2)
-# set(PICO_PLATFORM rp2350-riscv)
-
-# ============================================================================
+if(NOT DEFINED PICO_PLATFORM)
+	set(PICO_PLATFORM rp2350-arm-s)
+endif()
 
 # Include Pico SDK (from brain-sdk subdirectory)
 include(brain-sdk/pico_sdk_import.cmake)
@@ -170,6 +163,8 @@ cat > "$APP_DIR/.gitignore" <<EOF
 _deps
 cmake-*
 build
+build-pico
+build-pico-2
 .DS_Store
 *.lck
 **/ai
@@ -191,15 +186,15 @@ A Brain module application built with the brain-sdk.
 ## Build
 
 \`\`\`bash
-mkdir build
-cd build
-cmake ..
-make
+./build-firmware.sh
 \`\`\`
 
 ## Flash
 
-Flash the generated \`$APP_NAME.uf2\` file to your Brain module by holding the BOOTSEL button while connecting it to your computer, then copy the .uf2 file to the mounted drive.
+Flash one of the generated UF2 files to your Brain module by holding the BOOTSEL button while connecting it to your computer, then copy the .uf2 file to the mounted drive:
+
+- \`$APP_NAME-pico.uf2\` (RP2040)
+- \`$APP_NAME-pico-2.uf2\` (RP2350)
 
 ## Development
 
@@ -222,9 +217,9 @@ cat > "$APP_DIR/.vscode/launch.json" <<EOF
         {   "name": "Pico Debug (RP2040)",
             "device": "RP2040",
             "gdbPath": "arm-none-eabi-gdb",
-            "cwd": "\${workspaceRoot}",
-            "executable": "\${workspaceFolder}/build/$APP_NAME.elf",
-            "preLaunchTask": "CMake Build",
+            "cwd": "\${workspaceFolder}",
+            "executable": "\${workspaceFolder}/build-pico/$APP_NAME.elf",
+            "preLaunchTask": "Build Pico (RP2040)",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
@@ -242,9 +237,9 @@ cat > "$APP_DIR/.vscode/launch.json" <<EOF
         {   "name": "Pico 2 Debug (RP2350)",
             "device": "RP2350",
             "gdbPath": "arm-none-eabi-gdb",
-            "cwd": "\${workspaceRoot}",
-            "executable": "\${workspaceFolder}/build/$APP_NAME.elf",
-            "preLaunchTask": "CMake Build",
+            "cwd": "\${workspaceFolder}",
+            "executable": "\${workspaceFolder}/build-pico-2/$APP_NAME.elf",
+            "preLaunchTask": "Build Pico 2 (RP2350)",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
@@ -283,14 +278,76 @@ cat > "$APP_DIR/.vscode/tasks.json" <<EOF
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "CMake Build",
+			"label": "Configure Pico (RP2040)",
 			"type": "shell",
-			"command": "cmake --build build",
+			"command": "cmake -S \${workspaceFolder} -B \${workspaceFolder}/build-pico -DPICO_BOARD=pico -DPICO_PLATFORM=rp2040",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Pico (RP2040)",
+			"type": "shell",
+			"dependsOn": "Configure Pico (RP2040)",
+			"command": "cmake --build \${workspaceFolder}/build-pico",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Configure Pico 2 (RP2350)",
+			"type": "shell",
+			"command": "cmake -S \${workspaceFolder} -B \${workspaceFolder}/build-pico-2 -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Pico 2 (RP2350)",
+			"type": "shell",
+			"dependsOn": "Configure Pico 2 (RP2350)",
+			"command": "cmake --build \${workspaceFolder}/build-pico-2",
 			"group": "build",
 			"problemMatcher": []
 		}
 	]
 }
+EOF
+
+# Create build-firmware.sh script
+cat > "$APP_DIR/build-firmware.sh" <<EOF
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+TARGET_NAME="$APP_NAME"
+
+build_target() {
+	local board="\$1"
+	local platform="\$2"
+	local build_dir="\$3"
+	local output_file="\$4"
+
+	echo "Configuring \${board} (\${platform})..."
+	cmake -S "\$ROOT_DIR" -B "\$ROOT_DIR/\$build_dir" -DPICO_BOARD="\$board" -DPICO_PLATFORM="\$platform"
+
+	echo "Building \${board} (\${platform})..."
+	cmake --build "\$ROOT_DIR/\$build_dir"
+
+	local uf2_path="\$ROOT_DIR/\$build_dir/\${TARGET_NAME}.uf2"
+	if [[ ! -f "\$uf2_path" ]]; then
+		echo "Expected UF2 file not found: \$uf2_path" >&2
+		exit 1
+	fi
+
+	cp "\$uf2_path" "\$ROOT_DIR/\$output_file"
+	echo "Saved \$output_file"
+}
+
+# Build order: Pico first, then Pico 2.
+build_target "pico" "rp2040" "build-pico" "${APP_NAME}-pico.uf2"
+build_target "pico2" "rp2350-arm-s" "build-pico-2" "${APP_NAME}-pico-2.uf2"
+
+echo "Done."
 EOF
 
 # Create update-sdk.sh script
@@ -339,6 +396,7 @@ fi
 EOF
 
 chmod +x "$APP_DIR/update-sdk.sh"
+chmod +x "$APP_DIR/build-firmware.sh"
 
 echo "✓ Created directory structure"
 echo "✓ Created CMakeLists.txt"
@@ -347,6 +405,7 @@ echo "✓ Created .gitignore"
 echo "✓ Created .gitmodules"
 echo "✓ Created README.md"
 echo "✓ Created .vscode configuration"
+echo "✓ Created build-firmware.sh script"
 echo "✓ Created update-sdk.sh script"
 echo ""
 echo "Initializing git repository..."
@@ -365,8 +424,8 @@ echo "Success! New Brain app created at: $APP_DIR"
 echo ""
 echo "Next steps:"
 echo "  cd $APP_DIR"
-echo "  mkdir build && cd build"
-echo "  cmake .."
-echo "  make"
+echo "  ./build-firmware.sh"
 echo ""
-echo "The compiled .uf2 file will be in build/$APP_NAME.uf2"
+echo "Generated UF2 files:"
+echo "  $APP_NAME-pico.uf2"
+echo "  $APP_NAME-pico-2.uf2"

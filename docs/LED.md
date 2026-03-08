@@ -1,11 +1,16 @@
 # LED Component
 
 ## Overview
-The LED component manages individual LEDs in the Brain module, supporting brightness control via PWM, multiple blinking patterns, and event-driven callbacks.
+The LED component manages individual LEDs in the Brain module, supporting two output modes:
+- `LedMode::kPwm` for brightness control via PWM
+- `LedMode::kSimple` for direct GPIO high/low control
+
+It also supports multiple blinking patterns and event-driven callbacks.
 
 ## Features
 - Controls LED state (on/off/toggle)
-- Adjustable brightness using Pico PWM (0-255)
+- Runtime-selectable output mode (`kSimple` / `kPwm`)
+- Adjustable brightness using Pico PWM (0-255) in PWM mode
 - Multiple blinking modes:
   - Count-based blinking (blink N times)
   - Duration-based blinking (blink for N milliseconds)
@@ -14,7 +19,7 @@ The LED component manages individual LEDs in the Brain module, supporting bright
 - Status queries (is_on, is_blinking)
 
 ## Usage
-1. **Initialization**: Create an `Led` instance with GPIO pin, then call `init()`
+1. **Initialization**: Create an `Led` instance with GPIO pin, then call `init()` or `init(mode)`
 2. **Control**: Use methods to set brightness, turn on/off, toggle, or start blinking
 3. **Polling**: Call `update()` in the main loop for blink timing
 4. **Callbacks**: Register callbacks for state changes or blink completion
@@ -23,8 +28,8 @@ The LED component manages individual LEDs in the Brain module, supporting bright
 ```cpp
 #include "brain-ui/led.h"
 
-brain::ui::Led status_led(10);  // GPIO 10
-status_led.init();
+brain::ui::Led status_led(10);  // GPIO 10, default PWM mode
+status_led.init(brain::ui::LedMode::kPwm);
 
 status_led.set_brightness(128);  // 50% brightness
 status_led.on();                 // Turn on
@@ -34,6 +39,19 @@ status_led.off();                // Turn off
 while (true) {
     status_led.update();
 }
+```
+
+## Example - Runtime Mode Switch
+```cpp
+#include "brain-ui/led.h"
+
+brain::ui::Led led(10);
+led.init(brain::ui::LedMode::kSimple);  // direct GPIO mode
+led.on();
+
+// Switch to PWM mode at runtime
+led.set_mode(brain::ui::LedMode::kPwm);
+led.set_brightness(96);
 ```
 
 ## Example - Blinking Patterns
@@ -108,10 +126,13 @@ while (true) {
 ## API Reference
 
 ### Constructor
-- `Led(uint gpio_pin)` - Create LED on specified GPIO pin
+- `Led(uint gpio_pin, bool simple_mode = false)` - Create LED on specified GPIO pin
 
 ### Initialization
-- `void init()` - Initialize GPIO and PWM for the LED
+- `void init()` - Initialize LED using currently configured mode
+- `void init(LedMode mode)` - Initialize LED and explicitly select mode
+- `void set_mode(LedMode mode)` - Change mode at runtime (reconfigures GPIO function)
+- `LedMode get_mode() const` - Get current mode
 
 ### Basic Control
 - `void on()` - Turn LED on at current brightness
@@ -139,7 +160,8 @@ while (true) {
 ## Notes
 - Designed for transistor-driven LEDs (Eurorack compatible)
 - Must call `update()` regularly for blinking to work
-- Brightness uses PWM hardware
+- In `kSimple` mode, brightness behaves like thresholded on/off (`>0` -> HIGH, `0` -> LOW)
+- In `kPwm` mode, brightness uses PWM hardware
 - Avoid blocking operations in callbacks
 - Multiple LEDs can be managed independently
 - For managing all 6 Brain module LEDs together, see [Leds](LEDS.md)
