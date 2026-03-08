@@ -1,4 +1,5 @@
 add_library(brain-ui
+	button-led.cpp
 	button.cpp
 	led.cpp
 	leds.cpp

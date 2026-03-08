@@ -31,6 +31,7 @@ Anyone can write their own apps for the Brain module. The SDK provides easy acce
 
 #### UI Components (`brain::ui`)
 - [Button](docs/BUTTON.md) - Debounced pushbutton input with callbacks
+- [ButtonLed](docs/BUTTON_LED.md) - Dedicated on/off controller for the illuminated button LED
 - [LED](docs/LED.md) - Individual LED control with runtime-selectable SIMPLE/PWM mode
 - [Leds](docs/LEDS.md) - Group LED controller for all 6 Brain module LEDs
 - [Pots](docs/POTS.md) - Multiplexed potentiometer reader

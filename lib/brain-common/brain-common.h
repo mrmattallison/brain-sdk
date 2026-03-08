@@ -22,6 +22,7 @@
 
 #define BRAIN_BUTTON_1 GPIO_BRAIN_BUTTON_1
 #define BRAIN_BUTTON_2 GPIO_BRAIN_BUTTON_2
+#define BRAIN_BUTTON_1_LED GPIO_BRAIN_BUTTON_1_LED
 
 // Common constants that might be used across modules
 namespace brain::constants {
@@ -47,4 +48,3 @@ constexpr float kAudioCvInMinVoltage = -5.0f;
 constexpr float kAudioCvInMaxVoltage = 5.0f;
 
 }
-

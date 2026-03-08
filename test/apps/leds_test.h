@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "brain-ui/button-led.h"
 #include "brain-ui/led.h"
 #include "brain-ui/leds.h"
 
@@ -27,6 +28,7 @@ private:
 
 	brain::ui::Leds leds_;
 	brain::ui::Led direct_led_;
+	brain::ui::ButtonLed button_led_;
 	bool initialized_;
 	bool completed_;
 	bool aborted_;
@@ -60,11 +62,14 @@ private:
 
 	bool test_direct_led_finite_blink();
 	bool test_direct_led_callbacks();
+	bool test_button_led_basic();
+	bool test_button_led_blink_and_callbacks();
 
 	void announce_expected_mask(uint8_t mask) const;
 	void spin_wait_ms(uint32_t ms) const;
 	void wait_with_leds_update(brain::ui::Leds& leds, uint32_t ms) const;
 	void wait_with_led_update(brain::ui::Led& led, uint32_t ms) const;
+	void wait_with_button_led_update(brain::ui::ButtonLed& led, uint32_t ms) const;
 };
 
 }  // namespace sandbox::apps

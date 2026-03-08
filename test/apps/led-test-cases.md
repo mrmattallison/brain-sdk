@@ -48,3 +48,11 @@ Using NO_OF_LEDS and led_pins from leds.h.
 - blink(times, interval) finite blink sequence works as expected
 - set_on_state_change() callback fires with correct state values
 - set_on_blink_end() callback fires when blink sequence ends
+
+## button-led.cpp (ButtonLed wrapper tests)
+
+- on()/off()/toggle() drive the illuminated button LED as expected
+- is_on() tracks the state after direct controls
+- blink(times, interval) finishes and returns OFF
+- set_on_state_change() callback receives both ON and OFF states
+- set_on_blink_end() callback fires when blink sequence ends

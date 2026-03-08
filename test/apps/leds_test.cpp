@@ -10,7 +10,7 @@ constexpr uint32_t kPollStepMs = 5;
 constexpr uint8_t kMaskAll = static_cast<uint8_t>((1u << brain::ui::NO_OF_LEDS) - 1u);
 constexpr uint32_t kPerLedDelayMs = 1000;
 constexpr uint32_t kBetweenSequenceDelayMs = 300;
-constexpr uint8_t kCaseCount = 24;
+constexpr uint8_t kCaseCount = 26;
 
 const char* kCaseNames[kCaseCount] = {
 	"General/simple: startup animation",
@@ -36,7 +36,9 @@ const char* kCaseNames[kCaseCount] = {
 	"PWM: transitions while blinking",
 	"PWM: no-update blink progression",
 	"Led direct: finite blink(times, interval)",
-	"Led direct: callbacks"
+	"Led direct: callbacks",
+	"ButtonLed: basic on/off/toggle",
+	"ButtonLed: blink + callbacks"
 };
 
 const char* mode_label(bool simple_mode) {
@@ -50,6 +52,7 @@ namespace sandbox::apps {
 LedsTest::LedsTest()
 	: leds_(brain::ui::LedMode::kSimple),
 	  direct_led_(brain::ui::led_pins[0], false),
+	  button_led_(),
 	  initialized_(false),
 	  completed_(false),
 	  aborted_(false),
@@ -64,9 +67,11 @@ void LedsTest::init() {
 
 	leds_.init(brain::ui::LedMode::kSimple);
 	direct_led_.init();
+	button_led_.init();
 
 	leds_.off_all();
 	direct_led_.off();
+	button_led_.off();
 
 	print_led_map();
 	initialized_ = true;
@@ -114,6 +119,7 @@ void LedsTest::run_all_tests() {
 
 		leds_.off_all();
 		direct_led_.off();
+		button_led_.off();
 
 		if (aborted_) {
 			printf("\n[Test run aborted, returning to menu]\n");
@@ -306,6 +312,24 @@ void LedsTest::run_case(uint8_t case_index) {
 		case 24:
 			record_case("Led direct: callbacks fire", test_direct_led_callbacks() ? CaseResult::kPass : CaseResult::kFail);
 			break;
+		case 25:
+			record_case("ButtonLed: basic on/off/toggle internal", test_button_led_basic() ? CaseResult::kPass : CaseResult::kFail);
+			if (!aborted_) {
+				prompt_validation(
+					"ButtonLed: basic on/off/toggle visual",
+					"Did the button LED turn ON/OFF and toggle correctly?");
+			}
+			break;
+		case 26:
+			record_case(
+				"ButtonLed: blink + callbacks internal",
+				test_button_led_blink_and_callbacks() ? CaseResult::kPass : CaseResult::kFail);
+			if (!aborted_) {
+				prompt_validation(
+					"ButtonLed: blink visual",
+					"Did the button LED blink and end in OFF state?");
+			}
+			break;
 		default:
 			printf("Unknown test case index: %u\n", static_cast<unsigned>(case_index));
 			break;
@@ -329,6 +353,7 @@ void LedsTest::print_led_map() const {
 	for (uint8_t i = 0; i < brain::ui::NO_OF_LEDS; i++) {
 		printf("  LED %u -> GPIO %u\n", static_cast<unsigned>(i), static_cast<unsigned>(brain::ui::led_pins[i]));
 	}
+	printf("  Button LED -> GPIO %u\n", static_cast<unsigned>(GPIO_BRAIN_BUTTON_1_LED));
 }
 
 void LedsTest::record_case(const char* name, CaseResult result) {
@@ -808,6 +833,92 @@ bool LedsTest::test_direct_led_callbacks() {
 	return ok;
 }
 
+bool LedsTest::test_button_led_basic() {
+	bool ok = true;
+
+	wait_for_enter("ButtonLed basic on/off/toggle check");
+	if (aborted_) return true;
+
+	button_led_.off();
+	if (button_led_.is_on()) {
+		printf("  ButtonLed basic: expected OFF after off()\n");
+		ok = false;
+	}
+
+	button_led_.on();
+	spin_wait_ms(450);
+	if (!button_led_.is_on()) {
+		printf("  ButtonLed basic: expected ON after on()\n");
+		ok = false;
+	}
+
+	button_led_.off();
+	spin_wait_ms(450);
+	if (button_led_.is_on()) {
+		printf("  ButtonLed basic: expected OFF after off()\n");
+		ok = false;
+	}
+
+	button_led_.toggle();
+	spin_wait_ms(450);
+	if (!button_led_.is_on()) {
+		printf("  ButtonLed basic: expected ON after first toggle()\n");
+		ok = false;
+	}
+
+	button_led_.toggle();
+	spin_wait_ms(450);
+	if (button_led_.is_on()) {
+		printf("  ButtonLed basic: expected OFF after second toggle()\n");
+		ok = false;
+	}
+
+	return ok;
+}
+
+bool LedsTest::test_button_led_blink_and_callbacks() {
+	bool ok = true;
+	uint32_t state_change_count = 0;
+	uint32_t blink_end_count = 0;
+	bool saw_state_on = false;
+	bool saw_state_off = false;
+
+	wait_for_enter("ButtonLed blink + callback check");
+	if (aborted_) return true;
+
+	button_led_.set_on_state_change([&](bool on) {
+		state_change_count++;
+		saw_state_on |= on;
+		saw_state_off |= !on;
+	});
+	button_led_.set_on_blink_end([&]() { blink_end_count++; });
+
+	button_led_.off();
+	button_led_.blink(2, 110);
+	wait_with_button_led_update(button_led_, 1000);
+
+	if (button_led_.is_blinking()) {
+		printf("  ButtonLed blink: still blinking after expected end\n");
+		ok = false;
+	}
+	if (button_led_.is_on()) {
+		printf("  ButtonLed blink: expected OFF at end\n");
+		ok = false;
+	}
+	if (state_change_count == 0 || !saw_state_on || !saw_state_off) {
+		printf("  ButtonLed callbacks: state-change callback did not receive expected events\n");
+		ok = false;
+	}
+	if (blink_end_count == 0) {
+		printf("  ButtonLed callbacks: blink-end callback did not fire\n");
+		ok = false;
+	}
+
+	button_led_.set_on_state_change({});
+	button_led_.set_on_blink_end({});
+	return ok;
+}
+
 void LedsTest::announce_expected_mask(uint8_t mask) const {
 	printf("  Expected ON LEDs:");
 	bool any = false;
@@ -836,6 +947,14 @@ void LedsTest::wait_with_leds_update(brain::ui::Leds& leds, uint32_t ms) const {
 }
 
 void LedsTest::wait_with_led_update(brain::ui::Led& led, uint32_t ms) const {
+	absolute_time_t start = get_absolute_time();
+	while (static_cast<uint32_t>(absolute_time_diff_us(start, get_absolute_time()) / 1000) < ms) {
+		led.update();
+		sleep_ms(kPollStepMs);
+	}
+}
+
+void LedsTest::wait_with_button_led_update(brain::ui::ButtonLed& led, uint32_t ms) const {
 	absolute_time_t start = get_absolute_time();
 	while (static_cast<uint32_t>(absolute_time_diff_us(start, get_absolute_time()) / 1000) < ms) {
 		led.update();
